@@ -1,0 +1,1 @@
+"""Cashira backend application package."""
