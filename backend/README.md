@@ -18,10 +18,20 @@ uvicorn app.main:app --reload
 ```
 
 The seed command is deterministic (`--seed 42` by default), idempotent, and
-creates 12 months of daily inflows and outflows for three synthetic merchants.
-It validates rows before inserting them and reports deliberately malformed rows
-that were skipped. The SQLite file is `backend/data/cashira.db` and is ignored
-by git.
+creates 24 months of daily inflows and outflows for three synthetic merchants,
+from October 2024 through September 2026. It validates rows before inserting
+them and reports four deliberately malformed/duplicate rows that were skipped.
+After seeding, the command prints a per-merchant monthly inflow/outflow/net
+table. The SQLite file is `backend/data/cashira.db` and is ignored by git.
+
+The sales generator uses a weekday base near ₹7,000, Saturday near ₹12,000,
+and Sunday near ₹8,500 before deterministic noise and seasonal effects. Riya's
+normal sales months are close to ₹2.5 lakh. Asha and Kabir use 0.93x and 1.07x
+merchant scale factors. Inventory purchases track each day's sales at roughly
+80%; monthly supplier payments are ₹2,000–₹4,000 and monthly rent is fixed per
+merchant between ₹8,000 and ₹10,000. Month-start effects and a Diwali-season
+peak are included. September 2026 is Riya's weak month, with sales reduced by
+roughly 35–40% while rent remains unchanged.
 
 The demo loans use 18% annual interest over 24 months. Their principals are
 ₹1,80,000 for Riya, ₹2,00,000 for Asha, and ₹2,20,000 for Kabir. Standard EMIs
