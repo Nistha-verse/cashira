@@ -46,22 +46,22 @@ Request: `{"phone":"+919900000001","code":"123456"}`
 ## `GET /loan`
 
 ```json
-{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","loan":{"id":1,"principal":300000.0,"annual_rate_percent":18.0,"tenure_months":24,"min_emi":8990.0,"max_emi":21700.0,"standard_emi":14980.0,"due_day":5,"current_balance":300000.0,"carried_forward_shortfall":0.0,"payments":[],"amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}}
+{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","loan":{"id":1,"principal":180000.0,"annual_rate_percent":18.0,"tenure_months":24,"min_emi":6290.44,"max_emi":10783.61,"standard_emi":8986.34,"due_day":5,"current_balance":180000.0,"carried_forward_shortfall":0.0,"payments":[],"amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}}
 ```
 
 ## `GET /loan/recommendation`
 
 ```json
-{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","recommendation_id":1,"current_emi":15400.0,"range":{"min":8990.0,"max":21700.0},"standard_emi":14980.0,"reasons":[{"code":"cash_flow_position","message":"The recommended EMI reflects the forecast next-month net cash flow compared with the trailing average.","ratio":1.03}],"explanation":"We used a transparent cash-flow rule: the 30-day forecast is compared with your trailing monthly net average. The recent outlook is close to usual, so the payment stays near the middle of your agreed range.","forecast_method":"baseline","rule_version":"cashira-emi-v1","forecast":{"expected_net":310000.0,"lower_net":220000.0,"upper_net":400000.0},"summary":{"trailing_average_net":300000.0,"latest_month":{"month":"2024-12","net":310000.0}},"amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}
+{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","recommendation_id":1,"current_emi":8633.38,"range":{"min":6290.44,"max":10783.61},"standard_emi":8986.34,"reasons":[{"code":"cash_flow_position","message":"The recommended EMI reflects the forecast next-month net cash flow compared with the trailing average.","forecast_net":382250.37,"trailing_average_net":375802.86,"ratio":1.0172},{"code":"steady_capacity","message":"Recent cash flow is close to its trailing average."}],"explanation":"We used a transparent cash-flow rule: the 30-day forecast is compared with your trailing monthly net average. The recent outlook is close to usual, so the payment stays near the middle of your agreed range.","forecast_method":"baseline","rule_version":"cashira-emi-v1","forecast":{"expected_net":382250.37,"lower_net":284601.87,"upper_net":479898.69},"summary":{"trailing_average_net":375802.86,"latest_month":{"month":"2024-12","inflow":1111999.84,"outflow":735567.25,"net":376432.59,"change_vs_trailing_average":629.73}},"amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}
 ```
 
 ## `POST /loan/pay`
 
-Request: `{"amount":15000,"payment_date":"2025-01-05"}`. Omit `amount` to use
+Request: `{"amount":9000,"payment_date":"2025-01-05"}`. Omit `amount` to use
 the current recommendation.
 
 ```json
-{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","payment_id":1,"payment":{"amount":15000.0,"payment_date":"2025-01-05","interest_component":4500.0,"principal_component":10500.0,"balance_after":289500.0,"carried_forward_shortfall":0.0},"message":"Simulated monthly payment recorded.","amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}
+{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is an advisory decision-support layer, not a lender.","payment_id":1,"payment":{"amount":9000.0,"payment_date":"2025-01-05","interest_component":2700.0,"principal_component":6300.0,"balance_after":173700.0,"carried_forward_shortfall":0.0},"message":"Simulated monthly payment recorded.","amortization":"Prototype assumption: fixed-rate amortization is used; any shortfall versus the standard monthly EMI carries forward and does not reduce the total owed.","repayment_frequency":"monthly"}
 ```
 
 ## `GET /records/{id}/receipt`

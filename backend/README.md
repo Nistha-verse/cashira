@@ -23,6 +23,13 @@ It validates rows before inserting them and reports deliberately malformed rows
 that were skipped. The SQLite file is `backend/data/cashira.db` and is ignored
 by git.
 
+The demo loans use 18% annual interest over 24 months. Their principals are
+₹1,80,000 for Riya, ₹2,00,000 for Asha, and ₹2,20,000 for Kabir. Standard EMIs
+are derived from the shared amortization formula: approximately ₹8,986.34,
+₹9,984.82, and ₹10,983.30 respectively. Each configured monthly range is 70%
+to 120% of that merchant's standard EMI; reseeding resets the balance to the
+principal and carried-forward shortfall to zero.
+
 OpenAPI is available at `http://localhost:8000/docs`; the endpoint contract and
 example JSON are in [`../docs/API.md`](../docs/API.md).
 

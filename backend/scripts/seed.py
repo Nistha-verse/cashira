@@ -30,6 +30,15 @@ MERCHANTS = [
     {"id": 3, "name": "Kabir General Mart", "phone": "+919900000003", "city": "Jaipur", "base": 38500.0, "cost": 0.64},
 ]
 
+# Demo loan sizing is explicit so the seeded story stays stable when merchant
+# transaction assumptions evolve. Standard EMI is still derived by the shared
+# fixed-rate amortization formula below.
+DEMO_PRINCIPALS = {
+    1: Decimal("180000"),  # Riya
+    2: Decimal("200000"),  # Asha
+    3: Decimal("220000"),  # Kabir
+}
+
 
 def generate_synthetic_rows(seed: int = 42) -> list[dict]:
     """Generate daily inflows and outflows plus deliberate bad input rows."""
@@ -146,7 +155,7 @@ def seed_database(seed: int = 42) -> dict[str, int]:
                         description=row["description"],
                     )
                 )
-            principal = Decimal("300000") + Decimal(merchant["id"] * 50000)
+            principal = DEMO_PRINCIPALS[merchant["id"]]
             standard = calculate_standard_emi(principal, Decimal("18"), 24)
             db.add(
                 Loan(
@@ -154,8 +163,8 @@ def seed_database(seed: int = 42) -> dict[str, int]:
                     principal=principal,
                     annual_rate=Decimal("18.00"),
                     tenure_months=24,
-                    min_emi=standard * Decimal("0.60"),
-                    max_emi=standard * Decimal("1.45"),
+                    min_emi=standard * Decimal("0.70"),
+                    max_emi=standard * Decimal("1.20"),
                     standard_emi=standard,
                     due_day=5,
                     current_balance=principal,
