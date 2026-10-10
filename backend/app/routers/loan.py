@@ -15,6 +15,7 @@ from ..services.explain import explain_recommendation
 from ..services.forecast import forecast_transactions
 from ..services.loan_state import apply_payment
 from ..services.summary import monthly_summary
+from ..services.audit import create_audit_record
 from ..config import settings
 from .helpers import assumptions, decimal, iso_datetime, response
 from .merchant import DEMO_MERCHANT_ID
@@ -83,6 +84,22 @@ def loan_recommendation(db: Session = Depends(get_db)) -> dict:
         rule_version=result["rule_version"],
     )
     db.add(recommendation)
+    db.flush()
+    audit = create_audit_record(
+        db,
+        loan_id=loan.id,
+        record_type="recommendation",
+        record={
+            "record_type": "recommendation",
+            "recommendation_id": recommendation.id,
+            "loan_ref": str(loan.id),
+            "emi": result["emi"],
+            "reasons": result["reasons"],
+            "forecast_method": result["forecast_method"],
+            "rule_version": result["rule_version"],
+        },
+        rule_version=result["rule_version"],
+    )
     db.commit()
     db.refresh(recommendation)
     return response(
@@ -95,6 +112,7 @@ def loan_recommendation(db: Session = Depends(get_db)) -> dict:
             "explanation": result["explanation"],
             "forecast_method": result["forecast_method"],
             "rule_version": result["rule_version"],
+            "audit_record_id": audit.id,
             "forecast": {"expected_net": forecast["expected_net"], "lower_net": forecast["lower_net"], "upper_net": forecast["upper_net"]},
             "summary": {"trailing_average_net": summary["trailing_average_net"], "latest_month": summary["latest_month"]},
             **assumptions(),
@@ -128,11 +146,31 @@ def loan_pay(payload: PaymentRequest, db: Session = Depends(get_db)) -> dict:
         carried_shortfall_after=applied["carried_shortfall_after"],
     )
     db.add(payment)
+    db.flush()
+    audit = create_audit_record(
+        db,
+        loan_id=loan.id,
+        record_type="payment",
+        record={
+            "record_type": "payment",
+            "payment_id": payment.id,
+            "loan_ref": str(loan.id),
+            "amount": payment.amount,
+            "payment_date": payment.payment_date.isoformat(),
+            "interest_component": payment.interest_component,
+            "principal_component": payment.principal_component,
+            "balance_after": payment.balance_after,
+            "carried_forward_shortfall": payment.carried_shortfall_after,
+            "rule_version": "cashira-emi-v1",
+        },
+        rule_version="cashira-emi-v1",
+    )
     db.commit()
     db.refresh(payment)
     return response(
         {
             "payment_id": payment.id,
+            "audit_record_id": audit.id,
             "payment": {
                 "amount": decimal(payment.amount),
                 "payment_date": payment.payment_date.isoformat(),

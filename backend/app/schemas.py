@@ -23,6 +23,7 @@ class PaymentRequest(BaseModel):
 
 
 class VerifyRequest(BaseModel):
+    record_id: int | None = None
     record: dict | None = None
     hash: str | None = None
     signature: str | None = None
