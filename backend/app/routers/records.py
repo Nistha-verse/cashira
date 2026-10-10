@@ -45,13 +45,21 @@ def record_receipt(record_id: int, db: Session = Depends(get_db)) -> JSONRespons
 def verify_record(payload: VerifyRequest, db: Session = Depends(get_db)) -> dict:
     audit = db.get(AuditRecord, payload.record_id) if payload.record_id else None
     if audit is None and payload.record:
-        supplied_hash = payload.hash
-        supplied_signature = payload.signature
+        candidate = payload.record
+        # Accept either the compact request shape or the object returned by
+        # GET /records/{id}/receipt.
+        if "record" in candidate and "hash" in candidate and isinstance(candidate["record"], dict):
+            supplied_hash = payload.hash or candidate.get("hash")
+            supplied_signature = payload.signature or candidate.get("signature")
+            candidate = candidate["record"]
+        else:
+            supplied_hash = payload.hash
+            supplied_signature = payload.signature
         if not supplied_hash or not supplied_signature:
             raise HTTPException(status_code=422, detail="record, hash, and signature are required")
         from ..services.audit import canonical_json, hash_canonical, verify_signature
 
-        recomputed = hash_canonical(canonical_json(payload.record))
+        recomputed = hash_canonical(canonical_json(candidate))
         hash_valid = recomputed == supplied_hash
         signature_valid = verify_signature(supplied_hash, supplied_signature)
         verified = hash_valid and signature_valid

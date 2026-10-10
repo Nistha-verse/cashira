@@ -65,8 +65,10 @@ class BaselineForecaster(Forecaster):
     def forecast(self, rows: list[Any], horizon_days: int = 30) -> ForecastResult:
         series = _daily_series(rows)
         if not series:
+            # A fixed anchor keeps an empty-input result deterministic.
+            empty_anchor = date(2024, 1, 1)
             daily = [
-                {"date": (date.today() + timedelta(days=i + 1)).isoformat(), "expected": 0.0, "lower": 0.0, "upper": 0.0}
+                {"date": (empty_anchor + timedelta(days=i + 1)).isoformat(), "expected": 0.0, "lower": 0.0, "upper": 0.0}
                 for i in range(horizon_days)
             ]
             return ForecastResult(self.name, horizon_days, 0.0, 0.0, 0.0, daily)

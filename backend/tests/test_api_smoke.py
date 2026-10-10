@@ -24,6 +24,7 @@ def test_api_smoke_for_core_endpoints():
     assert receipt.status_code == 200
     assert receipt.headers["content-type"].startswith("application/json")
     assert client.post("/records/verify", json={"record_id": body["audit_record_id"]}).json()["verified"] is True
+    assert client.post("/records/verify", json=receipt.json()).json()["verified"] is True
     payment = client.post("/loan/pay", json={})
     assert payment.status_code == 200
     assert payment.json()["payment"]["amount"] > 0

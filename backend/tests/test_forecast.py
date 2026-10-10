@@ -25,3 +25,9 @@ def test_forecast_falls_back_when_prophet_fails(monkeypatch):
     monkeypatch.setattr("app.services.forecast.ProphetForecaster.forecast", fail)
     result = forecast_transactions(rows(), prefer_prophet=True)
     assert result.method == "baseline"
+
+
+def test_empty_forecast_is_deterministic():
+    first = BaselineForecaster().forecast([]).as_dict()
+    second = BaselineForecaster().forecast([]).as_dict()
+    assert first == second
