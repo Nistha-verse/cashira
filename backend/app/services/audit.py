@@ -119,13 +119,19 @@ def verify_audit_record(db: Session, audit: AuditRecord) -> dict[str, Any]:
     signature_valid = verify_signature(audit.record_hash, audit.signature)
     chain_valid = _verify_chain(db, audit)
     anchored = audit.anchored_tx_hash is not None
-    verified = hash_valid and signature_valid and chain_valid
+    anchor_valid = None
+    if anchored:
+        from .anchor import verify_anchor
+
+        anchor_valid = verify_anchor(audit)
+    verified = hash_valid and signature_valid and chain_valid and (not anchored or anchor_valid is True)
     return {
         "verified": verified,
         "hash_valid": hash_valid,
         "signature_valid": signature_valid,
         "chain_valid": chain_valid,
         "anchored": anchored,
+        "anchor_valid": anchor_valid,
         "message": (
             "This record is verified: its contents, signature, and chain link match."
             if verified

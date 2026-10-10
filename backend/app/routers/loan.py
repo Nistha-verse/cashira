@@ -16,6 +16,7 @@ from ..services.forecast import forecast_transactions
 from ..services.loan_state import apply_payment
 from ..services.summary import monthly_summary
 from ..services.audit import create_audit_record
+from ..services.anchor import anchor_audit_record
 from ..config import settings
 from .helpers import assumptions, decimal, iso_datetime, response
 from .merchant import DEMO_MERCHANT_ID
@@ -100,6 +101,7 @@ def loan_recommendation(db: Session = Depends(get_db)) -> dict:
         },
         rule_version=result["rule_version"],
     )
+    anchor_audit_record(db, audit)
     db.commit()
     db.refresh(recommendation)
     return response(
@@ -165,6 +167,7 @@ def loan_pay(payload: PaymentRequest, db: Session = Depends(get_db)) -> dict:
         },
         rule_version="cashira-emi-v1",
     )
+    anchor_audit_record(db, audit)
     db.commit()
     db.refresh(payment)
     return response(

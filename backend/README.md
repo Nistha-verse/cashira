@@ -64,3 +64,21 @@ pytest -q
 - The optional testnet anchor, when enabled in the later build, is an
   illustration only and must use a throwaway testnet key. Merchant identity,
   records, and balances do not belong on-chain.
+
+## Optional testnet anchor
+
+The `contracts/` Hardhat project contains the owner-gated `CashiraAnchor`
+contract. Its local tests cover an authorized write, an unauthorized failure,
+and the emitted event:
+
+```bash
+cd contracts
+npm install
+npm test
+```
+
+For Polygon Amoy, copy `contracts/.env.example`, set the RPC URL and a
+throwaway testnet key, deploy with `npm run deploy:amoy`, then set the matching
+backend `CHAIN_*` variables and `CHAIN_ENABLED=true`. Anchor calls are
+best-effort: if disabled or unavailable, recommendations, payments, receipts,
+and verification continue to work without an anchor.
