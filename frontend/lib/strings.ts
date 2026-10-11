@@ -48,6 +48,32 @@ export const lenderStrings = {
   doesNotMatch: "This record does not match the saved receipt.",
   alteredNote: "If anyone changes a saved record, verification fails.",
   recordAction: "Record action (simulated)"
+  ,actionHistory: "Action history",
+  actionType: "Action type",
+  note: "Note",
+  linkedAlert: "Linked alert",
+  language: "Language",
+  reminder: "Reminder",
+  contact: "Contact",
+  review: "Review",
+  livePreview: "Message preview",
+  previewUnavailable: "The API does not provide a preview endpoint. The rendered message appears after this simulated action is recorded.",
+  recordsTitle: "Receipts you can verify",
+  recordId: "Record ID",
+  receipt: "Receipt",
+  downloadReceipt: "Download receipt JSON",
+  tryChanging: "Try changing it",
+  verifyChanged: "Verify changed receipt",
+  verificationFailure: "This receipt does not match the saved record.",
+  verificationSuccess: "This receipt matches the saved record.",
+  signatureStatus: "Signature status",
+  chainStatus: "Chain link status",
+  noRecordLinks: "No record links have been collected in this session yet.",
+  enterRecordId: "Enter a record ID",
+  openRecord: "Open record",
+  actionRecorded: "The action was recorded. Simulated: nothing is actually sent.",
+  alertAction: "Alert action",
+  simulatedNotice: "Simulated: nothing is actually sent"
 } as const;
 
 export type LenderStringKey = keyof typeof lenderStrings;
