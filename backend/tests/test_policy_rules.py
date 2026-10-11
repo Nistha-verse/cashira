@@ -10,7 +10,7 @@ def test_payments_are_disabled_by_default(monkeypatch):
     token = client.post("/auth/verify-otp", json={"phone": "+919900000001", "code": "123456"}).json()["session_token"]
     result = client.post("/loan/pay", headers={"Authorization": f"Bearer {token}"}, json={})
     assert result.status_code == 403
-    assert "disabled" in result.json()["error"]
+    assert "disabled" in result.json()["error"]["message"]
 
 
 def test_lender_alert_action_changes_status():
