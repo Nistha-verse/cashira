@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Consent, Merchant, Transaction
+from ..models import Consent, LenderAction, Merchant, Transaction
+from ..i18n import t
+from ..models import Loan
+from ..services.audit import create_audit_record
 from ..authz import require_merchant
 from ..services.forecast import forecast_transactions
 from ..services.summary import monthly_summary
@@ -126,5 +130,22 @@ def revoke_consent(identity: dict = Depends(require_merchant), db: Session = Dep
     consent = get_merchant_consent(db, identity.get("merchant_id", DEMO_MERCHANT_ID))
     consent.status = "revoked"
     consent.revoked_at = datetime.utcnow()
+    loan = db.query(Loan).filter(Loan.merchant_id == consent.merchant_id).first()
+    if loan:
+        create_audit_record(
+            db,
+            loan_id=loan.id,
+            record_type="consent_change",
+            record={"merchant_id": consent.merchant_id, "scope": consent.scope, "status": consent.status, "changed_by": "merchant"},
+            rule_version="cashira-consent-v1",
+        )
     db.commit()
-    return response({"consent": {"status": consent.status, "scope": consent.scope}, "message": "Consent withdrawn. New lender review is stopped."})
+    return response({"consent": {"status": consent.status, "scope": consent.scope}, "message_key": "consent.revoked", "params": {}, "message": "Consent withdrawn. New lender review is stopped."})
+
+
+@router.get("/messages")
+def merchant_messages(identity: dict = Depends(require_merchant), db: Session = Depends(get_db), lang: str | None = Query(default=None)) -> dict:
+    merchant = get_demo_merchant(db, identity)
+    selected_lang = lang if lang in {"en", "hi", "bn"} else merchant.preferred_language
+    actions = db.query(LenderAction).filter(LenderAction.merchant_id == merchant.id, LenderAction.action_type == "reminder").order_by(LenderAction.id.desc()).all()
+    return response({"messages": [{"id": item.id, "message_key": item.message_key, "params": json.loads(item.message_params_json), "text": t(item.message_key or "reminders.contact", selected_lang, **json.loads(item.message_params_json)), "language": selected_lang} for item in actions]})

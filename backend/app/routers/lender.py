@@ -11,11 +11,16 @@ from sqlalchemy.orm import Session
 from ..authz import require_lender
 from ..config import settings
 from ..db import get_db
-from ..models import Alert, Consent, LenderPortfolio, Loan, Merchant, Payment, Transaction
+from ..models import Alert, Consent, LenderAction, LenderPortfolio, Loan, Merchant, Payment, Transaction
+from ..schemas import LenderActionRequest
+from ..services.audit import create_audit_record
 from ..services.alerts import consent_is_active, effective_as_of, evaluate_merchant_alerts, merchant_signal_evaluation, repayment_summary
 from ..services.forecast import forecast_transactions
 from ..services.summary import monthly_summary
 from ..services.weekly import weekly_cash_flow
+from ..services.signals import render_signal_reason
+from ..services.explain import explain_recommendation_translated
+from ..i18n import t
 from .helpers import decimal, response
 from .loan import loan_payload
 
@@ -50,7 +55,7 @@ def loan_dict(loan: Loan | None) -> dict | None:
     return {"standard_emi": float(loan.standard_emi), "min_emi": float(loan.min_emi), "max_emi": float(loan.max_emi)}
 
 
-def merchant_review(db: Session, merchant: Merchant, as_of: date | None = None) -> dict:
+def merchant_review(db: Session, merchant: Merchant, as_of: date | None = None, lang: str | None = None) -> dict:
     effective = effective_as_of(db, as_of)
     consent = consent_for(db, merchant.id)
     if not consent_is_active(consent, effective):
@@ -60,16 +65,18 @@ def merchant_review(db: Session, merchant: Merchant, as_of: date | None = None) 
     loan = db.query(Loan).filter(Loan.merchant_id == merchant.id).first()
     payments = db.query(Payment).filter(Payment.loan_id == loan.id).order_by(Payment.due_date, Payment.id).all() if loan else []
     forecast = forecast_transactions(records, horizon_days=28, prefer_prophet=settings.use_prophet)
+    selected_lang = lang if lang in {"en", "hi", "bn"} else merchant.preferred_language
+    signal_payload = {**evaluation["signals"], "signals": [render_signal_reason(item, selected_lang) for item in evaluation["signals"]["signals"]]}
     return {
         "merchant": {"id": merchant.id, "name": merchant.name, "city": merchant.city, "business_type": merchant.business_type, "preferred_language": merchant.preferred_language, "scenario": merchant.scenario},
         "status": evaluation["signals"]["status"],
         "consent": consent_payload(consent),
         "weekly": evaluation["weekly"],
         "monthly_summary": monthly_summary(records),
-        "signals": evaluation["signals"],
+        "signals": signal_payload,
         "forecast": {"label": "estimate, not a guarantee", **forecast.as_dict()},
         "repayment": {"history": [{"due_date": item.due_date.isoformat() if item.due_date else None, "payment_date": item.payment_date.isoformat() if item.payment_date else None, "amount": decimal(item.amount), "status": item.status, "days_late": item.days_late, "balance_after": decimal(item.balance_after)} for item in payments], **evaluation["repayment"]},
-        "emi_suggestion": {"label": "suggestion for lender review; Cashira does not change any EMI", "loan": loan_payload(loan) if loan else None},
+        "emi_suggestion": {"label": "suggestion for lender review; Cashira does not change any EMI", "loan": loan_payload(loan) if loan else None, "explanation": explain_recommendation_translated([], selected_lang)},
         "alerts": [{"id": item.id, "signal_id": item.signal_id, "severity": item.severity, "status": item.status, "week_key": item.week_key, "message_key": item.message_key, "params": json.loads(item.params_json)} for item in db.query(Alert).filter(Alert.merchant_id == merchant.id).order_by(Alert.id).all()],
     }
 
@@ -125,11 +132,11 @@ def _next_due(loan: Loan | None, as_of: date) -> date:
 
 
 @router.get("/merchants/{merchant_id}")
-def merchant_detail(merchant_id: int, as_of: date | None = Query(default=None), identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
+def merchant_detail(merchant_id: int, as_of: date | None = Query(default=None), lang: str | None = Query(default=None), identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
     merchant = next((item for item in portfolio_merchants(db, identity["lender_id"]) if item.id == merchant_id), None)
     if merchant is None:
         raise HTTPException(status_code=404, detail="Merchant is not in lender portfolio")
-    return response(merchant_review(db, merchant, as_of))
+    return response(merchant_review(db, merchant, as_of, lang))
 
 
 @router.get("/alerts")
@@ -154,3 +161,33 @@ def alert_action(alert_id: int, action: str, identity: dict = Depends(require_le
     alert.status = "acknowledged" if action == "acknowledge" else "dismissed"
     db.commit()
     return response({"alert_id": alert.id, "status": alert.status})
+
+
+@router.post("/merchants/{merchant_id}/actions")
+def create_action(merchant_id: int, payload: LenderActionRequest, identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
+    if payload.type not in {"reminder", "contact", "review"}:
+        raise HTTPException(status_code=422, detail="Action type must be reminder, contact, or review")
+    merchant = next((item for item in portfolio_merchants(db, identity["lender_id"]) if item.id == merchant_id), None)
+    effective = effective_as_of(db)
+    if merchant is None or not consent_is_active(consent_for(db, merchant_id), effective):
+        raise HTTPException(status_code=404, detail="Merchant is not available for lender action")
+    language = payload.lang if payload.lang in {"en", "hi", "bn"} else merchant.preferred_language
+    key = f"reminders.{payload.type}" if payload.type in {"reminder", "contact", "review"} else "reminders.contact"
+    params = {"name": merchant.name, "amount": float(merchant.loans[0].standard_emi) if merchant.loans else 0}
+    action = LenderAction(lender_id=identity["lender_id"], merchant_id=merchant_id, action_type=payload.type, note=payload.note, alert_id=payload.alert_id, language=language, message_key=key, message_params_json=json.dumps(params, sort_keys=True), message_text=t(key, language, **params))
+    db.add(action)
+    db.flush()
+    loan = merchant.loans[0] if merchant.loans else None
+    if loan:
+        audit = create_audit_record(db, loan_id=loan.id, record_type="lender_action", record={"action_id": action.id, "merchant_id": merchant_id, "action_type": payload.type, "note": payload.note, "message_key": key, "language": language}, rule_version="cashira-action-v1")
+    db.commit()
+    return response({"action_id": action.id, "type": action.action_type, "message_key": action.message_key, "params": params, "language": language, "text": action.message_text, "sent": False, "audit_record_id": audit.id if loan else None})
+
+
+@router.get("/merchants/{merchant_id}/actions")
+def list_actions(merchant_id: int, identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
+    portfolio_ids = {item.id for item in portfolio_merchants(db, identity["lender_id"])}
+    if merchant_id not in portfolio_ids or not consent_is_active(consent_for(db, merchant_id), effective_as_of(db)):
+        raise HTTPException(status_code=404, detail="Merchant is not available for lender action")
+    actions = db.query(LenderAction).filter(LenderAction.merchant_id == merchant_id).order_by(LenderAction.id.desc()).all()
+    return response({"actions": [{"id": item.id, "type": item.action_type, "note": item.note, "message_key": item.message_key, "params": json.loads(item.message_params_json), "language": item.language, "text": item.message_text, "created_at": item.created_at.isoformat()} for item in actions]})

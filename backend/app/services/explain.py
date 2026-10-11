@@ -23,3 +23,15 @@ def explain_recommendation(reasons: list[dict[str, Any]]) -> str:
     if not selected:
         selected.append("We used your available cash-flow records to set a monthly payment within the agreed range.")
     return " ".join(selected[:3])
+
+
+def explain_recommendation_translated(reasons: list[dict[str, Any]], lang: str = "en") -> str:
+    from ..i18n import t
+
+    selected = []
+    for reason in reasons:
+        key = f"explanation.{reason.get('code')}"
+        translated = t(key, lang)
+        if translated != key and translated not in selected:
+            selected.append(translated)
+    return " ".join(selected[:3]) or t("explanation.cash_flow_position", lang)

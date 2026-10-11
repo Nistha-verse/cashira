@@ -20,6 +20,20 @@ def _signal(signal_id: str, severity: str, reason_key: str, params: dict[str, An
     }
 
 
+def render_signal_reason(signal: dict[str, Any], lang: str = "en") -> dict[str, Any]:
+    from ..i18n import t
+
+    params = signal["params"]
+    rendered_params = {
+        "weeks": params.get("decline_weeks", 0),
+        "drop": round(float(params.get("cumulative_drop", 0)) * 100, 1),
+        "ratio": round(float(params.get("ratio", 0)) * 100, 1),
+        "coverage": round(float(params.get("coverage", 0)), 2),
+        "days": params.get("days_since_last_transaction", 0),
+    }
+    return {**signal, "text": t(signal["reason_key"], lang, **rendered_params)}
+
+
 def signal_s1(weekly: dict[str, Any], thresholds: dict[str, Any] | None = None) -> dict[str, Any]:
     thresholds = thresholds or settings.signal_thresholds
     decline_count = int(weekly.get("consecutive_weekly_declines") or 0)

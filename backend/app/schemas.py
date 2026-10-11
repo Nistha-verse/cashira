@@ -28,6 +28,13 @@ class DateRequest(BaseModel):
     as_of: date | None = None
 
 
+class LenderActionRequest(BaseModel):
+    type: str
+    note: str = ""
+    alert_id: int | None = None
+    lang: str | None = None
+
+
 class PaymentRequest(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0)
     payment_date: date | None = None
