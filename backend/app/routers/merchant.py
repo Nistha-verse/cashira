@@ -108,7 +108,8 @@ def get_merchant_consent(db: Session, merchant_id: int) -> Consent:
 
 @router.get("/consent")
 def merchant_consent(identity: dict = Depends(require_merchant), db: Session = Depends(get_db)) -> dict:
-    consent = get_merchant_consent(db, identity.get("merchant_id", DEMO_MERCHANT_ID))
+    merchant = get_demo_merchant(db, identity)
+    consent = get_merchant_consent(db, merchant.id)
     return response(
         {
             "consent": {
@@ -119,7 +120,7 @@ def merchant_consent(identity: dict = Depends(require_merchant), db: Session = D
                 "revoked_at": consent.revoked_at.isoformat() if consent.revoked_at else None,
                 "message_key": "consent.transaction_history",
                 "params": {},
-                "text": "I agree to share my transaction history for cash-flow review.",
+                "text": t("consent.transaction_history", merchant.preferred_language),
             }
         }
     )

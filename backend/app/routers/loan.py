@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import Loan, Payment, Recommendation, Transaction
+from ..models import Loan, Merchant, Payment, Recommendation, Transaction
 from ..schemas import PaymentRequest
 from ..services.engine import recommend_emi
 from ..services.explain import explain_recommendation

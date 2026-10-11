@@ -1,9 +1,10 @@
 # Cashira backend
 
-Cashira is a backend-only hackathon prototype for a regulated lender's future
-decision-support integration. It recommends a **monthly** EMI from consented,
-synthetic kirana-store records. It does not lend, move money, contact banks,
-send SMS, or run an LLM.
+Cashira is a backend-only hackathon prototype for lenders serving small
+merchants. It shows cash-flow trends, transparent repayment-risk signals, and
+early-warning alerts from consented synthetic kirana-store records. The lender
+stays in control: Cashira does not lend, change EMIs, collect payments, make
+lending decisions, contact banks, send SMS, or run an LLM.
 
 ## Setup
 
@@ -43,6 +44,16 @@ principal and carried-forward shortfall to zero.
 OpenAPI is available at `http://localhost:8000/docs`; the endpoint contract and
 example JSON are in [`../docs/API.md`](../docs/API.md).
 
+The seed creates twelve merchants, one simulated lender portfolio, active and
+revoked consent records, historical monthly payments, and scenarios including
+stable, growing, falling-for-three-weeks, recovering, data-gap, and revoked
+consent merchants. Set `SEED_END_DATE` to change the deterministic seed end
+date. `PAYMENTS_ENABLED=false` is the default: the old simulated payment route
+is retained for tests and demonstrations but returns 403 unless explicitly
+enabled. EMI output is read-only and labeled for lender review.
+
+**Hindi and Bengali translations were machine-written and need native-speaker review.**
+
 ## Test
 
 ```bash
@@ -64,6 +75,24 @@ pytest -q
   forecasts are inputs only; repayment events are monthly.
 - Explanations are selected from templates in `services/explain.py`, so the
   wording can be translated later without changing the rule.
+- Weekly lender signals are transparent rules, not predictions. They return
+  only green, amber, or red with plain reasons. No risk score, default
+  probability, ML risk model, or accuracy claim is produced.
+
+## Signal thresholds
+
+| Signal | Amber | Red |
+| --- | --- | --- |
+| S1 consecutive sales decline | 3 weeks and at least 10% cumulative drop | 4 weeks or at least 25% cumulative drop |
+| S2 recent sales vs baseline | below 80% of trailing 8-week baseline | below 65% |
+| S3 EMI coverage | monthly net below 2.0× standard EMI | below 1.3× |
+| S4 data gap | no transaction for 3+ days | no transaction for 7+ days |
+| S5 outflow spike | last 2 weeks above 130% of baseline while inflow is not higher | — |
+| S6 repayment | late payment in the last 3 months | overdue or missed payment |
+
+All evaluations use complete Monday-to-Sunday weeks up to an explicit `as_of`
+date, defaulting to the latest stored transaction date. Every signal includes
+its rule version and structured parameters.
 
 ## Assumptions and limitations
 
@@ -78,6 +107,13 @@ pytest -q
   real banks, UPI, money movement, SMS, or any production credit service.
 - Prophet outputs are forecasts with ranges rather than guarantees. The
   fallback is intentionally simple and transparent.
+- Signals are rule-based indicators for lender review, not predictions or
+  lending decisions. The dashboard does not produce a risk score or default
+  probability.
+- Consent is required for lender views. A revoked or expired merchant appears
+  only as a consent-withdrawn stub with no financial data.
+- Hindi and Bengali translations are machine-written and require native-speaker
+  review before production use.
 - The optional testnet anchor, when enabled in the later build, is an
   illustration only and must use a throwaway testnet key. Merchant identity,
   records, and balances do not belong on-chain.

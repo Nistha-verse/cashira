@@ -49,8 +49,8 @@ class Settings:
 
 settings = Settings()
 PROTOTYPE_NOTICE = (
-    "Prototype only: all data is synthetic and simulated; Cashira is an advisory "
-    "decision-support layer, not a lender."
+    "Prototype only: all data is synthetic and simulated; Cashira is a cash-flow "
+    "intelligence dashboard for lender review, not a lender or decision-maker."
 )
 AMORTIZATION_NOTICE = (
     "Prototype assumption: fixed-rate amortization is used; any shortfall versus "

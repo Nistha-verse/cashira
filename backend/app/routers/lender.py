@@ -77,7 +77,7 @@ def merchant_review(db: Session, merchant: Merchant, as_of: date | None = None, 
         "forecast": {"label": "estimate, not a guarantee", **forecast.as_dict()},
         "repayment": {"history": [{"due_date": item.due_date.isoformat() if item.due_date else None, "payment_date": item.payment_date.isoformat() if item.payment_date else None, "amount": decimal(item.amount), "status": item.status, "days_late": item.days_late, "balance_after": decimal(item.balance_after)} for item in payments], **evaluation["repayment"]},
         "emi_suggestion": {"label": "suggestion for lender review; Cashira does not change any EMI", "loan": loan_payload(loan) if loan else None, "explanation": explain_recommendation_translated([], selected_lang)},
-        "alerts": [{"id": item.id, "signal_id": item.signal_id, "severity": item.severity, "status": item.status, "week_key": item.week_key, "message_key": item.message_key, "params": json.loads(item.params_json)} for item in db.query(Alert).filter(Alert.merchant_id == merchant.id).order_by(Alert.id).all()],
+        "alerts": [{"id": item.id, "signal_id": item.signal_id, "severity": item.severity, "status": item.status, "week_key": item.week_key, "message_key": item.message_key, "params": json.loads(item.params_json), "text": t(item.message_key, selected_lang, **json.loads(item.params_json))} for item in db.query(Alert).filter(Alert.merchant_id == merchant.id).order_by(Alert.id).all()],
     }
 
 
@@ -140,14 +140,15 @@ def merchant_detail(merchant_id: int, as_of: date | None = Query(default=None), 
 
 
 @router.get("/alerts")
-def alerts(status: str | None = None, severity: str | None = None, identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
+def alerts(status: str | None = None, severity: str | None = None, lang: str = "en", identity: dict = Depends(require_lender), db: Session = Depends(get_db)) -> dict:
     merchant_ids = [item.id for item in portfolio_merchants(db, identity["lender_id"]) if consent_is_active(consent_for(db, item.id), effective_as_of(db))]
     query = db.query(Alert).filter(Alert.merchant_id.in_(merchant_ids))
     if status:
         query = query.filter(Alert.status == status)
     if severity:
         query = query.filter(Alert.severity == severity)
-    return response({"alerts": [{"id": item.id, "merchant_id": item.merchant_id, "signal_id": item.signal_id, "severity": item.severity, "week_key": item.week_key, "status": item.status, "message_key": item.message_key, "params": json.loads(item.params_json), "rule_version": item.rule_version} for item in query.order_by(Alert.id.desc()).all()]})
+    selected_lang = lang if lang in {"en", "hi", "bn"} else "en"
+    return response({"alerts": [{"id": item.id, "merchant_id": item.merchant_id, "signal_id": item.signal_id, "severity": item.severity, "week_key": item.week_key, "status": item.status, "message_key": item.message_key, "params": json.loads(item.params_json), "text": t(item.message_key, selected_lang, **json.loads(item.params_json)), "rule_version": item.rule_version} for item in query.order_by(Alert.id.desc()).all()]})
 
 
 @router.post("/alerts/{alert_id}/{action}")
@@ -172,7 +173,7 @@ def create_action(merchant_id: int, payload: LenderActionRequest, identity: dict
     if merchant is None or not consent_is_active(consent_for(db, merchant_id), effective):
         raise HTTPException(status_code=404, detail="Merchant is not available for lender action")
     language = payload.lang if payload.lang in {"en", "hi", "bn"} else merchant.preferred_language
-    key = f"reminders.{payload.type}" if payload.type in {"reminder", "contact", "review"} else "reminders.contact"
+    key = "reminders.payment" if payload.type == "reminder" else f"reminders.{payload.type}"
     params = {"name": merchant.name, "amount": float(merchant.loans[0].standard_emi) if merchant.loans else 0}
     action = LenderAction(lender_id=identity["lender_id"], merchant_id=merchant_id, action_type=payload.type, note=payload.note, alert_id=payload.alert_id, language=language, message_key=key, message_params_json=json.dumps(params, sort_keys=True), message_text=t(key, language, **params))
     db.add(action)
