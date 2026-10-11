@@ -47,8 +47,8 @@ export const lenderStrings = {
   matches: "This record matches the saved receipt.",
   doesNotMatch: "This record does not match the saved receipt.",
   alteredNote: "If anyone changes a saved record, verification fails.",
-  recordAction: "Record action (simulated)"
-  ,actionHistory: "Action history",
+  recordAction: "Record action (simulated)",
+  actionHistory: "Action history",
   actionType: "Action type",
   note: "Note",
   linkedAlert: "Linked alert",
@@ -73,7 +73,18 @@ export const lenderStrings = {
   openRecord: "Open record",
   actionRecorded: "The action was recorded. Simulated: nothing is actually sent.",
   alertAction: "Alert action",
-  simulatedNotice: "Simulated: nothing is actually sent"
+  simulatedNotice: "Simulated: nothing is actually sent",
+  demoOnly: "Demo-only controls. Not part of the product.",
+  simulateWeek: "Simulate next week",
+  resetDemo: "Reset demo data",
+  scenario: "Pattern",
+  decline: "Decline",
+  stable: "Stable",
+  recover: "Recover",
+  latestDemoResult: "Latest demo result",
+  newAlert: "New alert",
+  demoUnavailable: "Demo controls are unavailable from this backend session.",
+  noActiveMerchants: "No active merchants are available for simulation."
 } as const;
 
 export type LenderStringKey = keyof typeof lenderStrings;
