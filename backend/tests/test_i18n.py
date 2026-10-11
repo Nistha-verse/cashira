@@ -17,3 +17,4 @@ def test_reminder_renders_in_all_languages():
     assert "EMI" in rendered["bn"]
     assert rendered["hi"] != rendered["en"]
     assert rendered["bn"] != rendered["en"]
+    assert "₹1,80,000.00" == t("reminders.payment", "en", name="Riya", amount=180000).split(" of ")[1].split(". This")[0]
