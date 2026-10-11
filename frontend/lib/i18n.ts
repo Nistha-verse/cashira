@@ -1,4 +1,4 @@
-export const merchantCatalog = {
+const baseCatalog = {
   en: {
     home: "Home", messages: "Messages", sales: "Sales", greeting: "Your shop at a glance", consent: "Consent", shared: "What is shared", since: "Since", status: "Status", active: "Active", withdrawn: "Consent withdrawn", stopSharing: "Stop sharing", stopSharingConfirm: "Stop sharing your transaction history?", cancel: "Cancel", confirm: "Confirm", latestMessages: "Latest messages", monthlySales: "Monthly sales", salesSummary: "Your latest sales summary", noMessages: "No messages yet.", simulatedMessage: "This is a simulated message.", recentTransactions: "Recent transactions", from: "From", to: "To", filter: "Filter", noTransactions: "No transactions in this range.", loading: "Loading…", error: "We could not reach Cashira. Please try again.", retry: "Try again", language: "Language", english: "English", hindi: "हिन्दी", bengali: "বাংলা", prototype: "Prototype: synthetic data, simulated actions.", amount: "Amount", direction: "Type", inflow: "Sales", outflow: "Outflow", date: "Date", viewMessages: "View messages", viewSales: "View sales", stopSharingSimulated: "Simulated action: nothing is sent.", consentDescription: "Your transaction history is shared for cash-flow review.", noData: "No financial data is available while consent is withdrawn." 
   },
@@ -10,6 +10,16 @@ export const merchantCatalog = {
   }
 } as const;
 
+const extraCatalog = {
+  en: { login: "Shopkeeper access", phone: "Phone number", otp: "One-time code", requestOtp: "Get simulated OTP", verifyOtp: "Enter Cashira", otpHint: "OTP is simulated. Demo code", demoPhones: "Demo phones: +919900000001 to +919900000012", signOut: "Sign out", mainNav: "Main navigation", footer: "Synthetic data. Simulated actions.", rupees: "Amount in rupees", month: "Month", dateMissing: "Date not provided", unavailable: "Not provided", invalidRange: "Choose an end date on or after the start date.", total: "Total sales in this view", welcome: "Welcome", shop: "Your shop", otpReady: "Your simulated OTP is ready.", invalidLogin: "Please check the demo phone and OTP.", sessionExpired: "Please sign in again.", newest: "Newest messages first", receipts: "Receipts", prototypeEnglish: "Prototype: synthetic data, simulated actions." },
+  hi: { login: "दुकानदार प्रवेश", phone: "फ़ोन नंबर", otp: "एक बार का कोड", requestOtp: "सिम्युलेटेड OTP लें", verifyOtp: "Cashira खोलें", otpHint: "OTP सिम्युलेटेड है। डेमो कोड", demoPhones: "डेमो फ़ोन: +919900000001 से +919900000012", signOut: "साइन आउट", mainNav: "मुख्य नेविगेशन", footer: "नकली डेटा। सिम्युलेटेड कार्य।", rupees: "रुपयों में राशि", month: "महीना", dateMissing: "तारीख उपलब्ध नहीं", unavailable: "उपलब्ध नहीं", invalidRange: "अंतिम तारीख पहली तारीख के बाद या उसी दिन चुनें।", total: "इस अवधि में कुल बिक्री", welcome: "स्वागत है", shop: "आपकी दुकान", otpReady: "आपका सिम्युलेटेड OTP तैयार है।", invalidLogin: "डेमो फ़ोन और OTP जाँचें।", sessionExpired: "फिर से साइन इन करें।", newest: "नए संदेश पहले", receipts: "रसीदें", prototypeEnglish: "Prototype: synthetic data, simulated actions." },
+  bn: { login: "দোকানদারের প্রবেশ", phone: "ফোন নম্বর", otp: "একবারের কোড", requestOtp: "সিমুলেটেড OTP নিন", verifyOtp: "Cashira খুলুন", otpHint: "OTP সিমুলেটেড। ডেমো কোড", demoPhones: "ডেমো ফোন: +919900000001 থেকে +919900000012", signOut: "সাইন আউট", mainNav: "মূল নেভিগেশন", footer: "কৃত্রিম তথ্য। সিমুলেটেড কাজ।", rupees: "টাকায় পরিমাণ", month: "মাস", dateMissing: "তারিখ দেওয়া হয়নি", unavailable: "দেওয়া হয়নি", invalidRange: "শেষ তারিখ শুরুর তারিখের পরে বা একই দিনে বেছে নিন।", total: "এই সময়ের মোট বিক্রি", welcome: "স্বাগতম", shop: "আপনার দোকান", otpReady: "আপনার সিমুলেটেড OTP তৈরি।", invalidLogin: "ডেমো ফোন ও OTP দেখুন।", sessionExpired: "আবার সাইন ইন করুন।", newest: "নতুন বার্তা আগে", receipts: "রসিদ", prototypeEnglish: "Prototype: synthetic data, simulated actions." }
+};
+export const merchantCatalog = {
+  en: { ...baseCatalog.en, ...extraCatalog.en },
+  hi: { ...baseCatalog.hi, ...extraCatalog.hi },
+  bn: { ...baseCatalog.bn, ...extraCatalog.bn }
+};
 export type MerchantLanguage = keyof typeof merchantCatalog;
 export type MerchantStringKey = keyof (typeof merchantCatalog)["en"];
 

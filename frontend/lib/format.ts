@@ -3,10 +3,10 @@ export function formatMoney(value: number | null | undefined): string {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(value);
 }
 
-export function formatDate(value: string | null | undefined): string {
+export function formatDate(value: string | null | undefined, language = "en"): string {
   if (!value) return "—";
   const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(date);
+  return Number.isNaN(date.getTime()) ? "—" : new Intl.DateTimeFormat(`${language}-IN`, { dateStyle: "medium" }).format(date);
 }
 
 export function formatPercent(value: number | null | undefined): string {
