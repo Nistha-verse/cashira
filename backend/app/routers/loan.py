@@ -17,6 +17,7 @@ from ..services.loan_state import apply_payment
 from ..services.summary import monthly_summary
 from ..services.audit import create_audit_record
 from ..services.anchor import anchor_audit_record
+from ..authz import require_merchant
 from ..config import settings
 from .helpers import assumptions, decimal, iso_datetime, response
 from .merchant import DEMO_MERCHANT_ID
@@ -24,8 +25,9 @@ from .merchant import DEMO_MERCHANT_ID
 router = APIRouter(prefix="/loan", tags=["loan"])
 
 
-def get_demo_loan(db: Session) -> Loan:
-    loan = db.query(Loan).filter(Loan.merchant_id == DEMO_MERCHANT_ID).first()
+def get_demo_loan(db: Session, identity: dict | None = None) -> Loan:
+    merchant_id = (identity or {}).get("merchant_id", DEMO_MERCHANT_ID)
+    loan = db.query(Loan).filter(Loan.merchant_id == merchant_id).first()
     if loan is None:
         raise HTTPException(status_code=404, detail="Demo loan is not seeded")
     return loan
@@ -58,7 +60,7 @@ def loan_payload(loan: Loan) -> dict:
 
 
 def calculate_recommendation(db: Session, loan: Loan) -> tuple[dict, dict, dict]:
-    records = db.query(Transaction).filter(Transaction.merchant_id == DEMO_MERCHANT_ID).all()
+    records = db.query(Transaction).filter(Transaction.merchant_id == loan.merchant_id).all()
     summary = monthly_summary(records)
     forecast = forecast_transactions(records, horizon_days=30, prefer_prophet=settings.use_prophet)
     result = recommend_emi(summary, forecast.as_dict(), loan)
@@ -68,13 +70,13 @@ def calculate_recommendation(db: Session, loan: Loan) -> tuple[dict, dict, dict]
 
 
 @router.get("")
-def loan_details(db: Session = Depends(get_db)) -> dict:
-    return response({"loan": loan_payload(get_demo_loan(db))})
+def loan_details(identity: dict = Depends(require_merchant), db: Session = Depends(get_db)) -> dict:
+    return response({"loan": loan_payload(get_demo_loan(db, identity))})
 
 
 @router.get("/recommendation")
-def loan_recommendation(db: Session = Depends(get_db)) -> dict:
-    loan = get_demo_loan(db)
+def loan_recommendation(identity: dict = Depends(require_merchant), db: Session = Depends(get_db)) -> dict:
+    loan = get_demo_loan(db, identity)
     result, summary, forecast = calculate_recommendation(db, loan)
     recommendation = Recommendation(
         loan_id=loan.id,
@@ -108,6 +110,7 @@ def loan_recommendation(db: Session = Depends(get_db)) -> dict:
         {
             "recommendation_id": recommendation.id,
             "current_emi": decimal(result["emi"]),
+            "label": "suggestion for lender review; Cashira does not change any EMI",
             "range": {"min": decimal(loan.min_emi), "max": decimal(loan.max_emi)},
             "standard_emi": decimal(loan.standard_emi),
             "reasons": result["reasons"],
@@ -123,8 +126,10 @@ def loan_recommendation(db: Session = Depends(get_db)) -> dict:
 
 
 @router.post("/pay")
-def loan_pay(payload: PaymentRequest, db: Session = Depends(get_db)) -> dict:
-    loan = get_demo_loan(db)
+def loan_pay(payload: PaymentRequest, identity: dict = Depends(require_merchant), db: Session = Depends(get_db)) -> dict:
+    if not settings.payments_enabled:
+        raise HTTPException(status_code=403, detail="Simulated payments are disabled; Cashira does not collect payments")
+    loan = get_demo_loan(db, identity)
     recommendation, _, _ = calculate_recommendation(db, loan)
     amount = payload.amount if payload.amount is not None else recommendation["emi"]
     if amount < loan.min_emi or amount > loan.max_emi:
@@ -142,10 +147,12 @@ def loan_pay(payload: PaymentRequest, db: Session = Depends(get_db)) -> dict:
         loan_id=loan.id,
         amount=applied["amount"],
         payment_date=applied["payment_date"],
+        due_date=applied["payment_date"],
         interest_component=applied["interest_component"],
         principal_component=applied["principal_component"],
         balance_after=applied["balance_after"],
         carried_shortfall_after=applied["carried_shortfall_after"],
+        status="paid",
     )
     db.add(payment)
     db.flush()

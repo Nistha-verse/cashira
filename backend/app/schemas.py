@@ -17,6 +17,17 @@ class OTPVerify(BaseModel):
     code: str = Field(min_length=1, max_length=20)
 
 
+class ActionRequest(BaseModel):
+    type: str
+    note: str = ""
+    alert_id: int | None = None
+    lang: str | None = None
+
+
+class DateRequest(BaseModel):
+    as_of: date | None = None
+
+
 class PaymentRequest(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0)
     payment_date: date | None = None

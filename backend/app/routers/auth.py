@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from ..config import settings
+from ..authz import make_token
+from ..db import get_db
+from ..models import Lender, Merchant
 from ..schemas import OTPRequest, OTPVerify
 from .helpers import response
 
@@ -26,8 +28,35 @@ def request_otp(payload: OTPRequest) -> dict:
 
 
 @router.post("/verify-otp")
-def verify_otp(payload: OTPVerify) -> dict:
+def verify_otp(payload: OTPVerify, db: Session = Depends(get_db)) -> dict:
     if payload.code != settings.demo_otp_code:
         raise HTTPException(status_code=401, detail="Invalid simulated OTP")
-    token = hashlib.sha256(f"cashira-demo:{payload.phone}:{payload.code}".encode()).hexdigest()
-    return response({"verified": True, "session_token": token, "phone": payload.phone})
+    merchant = db.query(Merchant).filter(Merchant.phone == payload.phone).first()
+    if merchant is None:
+        raise HTTPException(status_code=404, detail="Merchant is not seeded")
+    token = make_token("merchant", payload.phone, merchant_id=merchant.id)
+    return response({"verified": True, "session_token": token, "role": "merchant", "phone": payload.phone, "merchant_id": merchant.id})
+
+
+@router.post("/lender/request-otp")
+def request_lender_otp(payload: OTPRequest) -> dict:
+    return response(
+        {
+            "phone": payload.phone,
+            "otp_requested": True,
+            "demo_code": settings.demo_otp_code,
+            "role": "lender",
+            "message": "A simulated lender OTP is ready for this prototype.",
+        }
+    )
+
+
+@router.post("/lender/verify-otp")
+def verify_lender_otp(payload: OTPVerify, db: Session = Depends(get_db)) -> dict:
+    if payload.code != settings.demo_otp_code:
+        raise HTTPException(status_code=401, detail="Invalid simulated OTP")
+    lender = db.query(Lender).filter(Lender.phone == payload.phone).first()
+    if lender is None:
+        raise HTTPException(status_code=404, detail="Demo lender is not seeded")
+    token = make_token("lender", payload.phone, lender_id=lender.id)
+    return response({"verified": True, "session_token": token, "role": "lender", "phone": payload.phone, "lender_id": lender.id})

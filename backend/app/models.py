@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -22,6 +22,8 @@ class Merchant(Base):
     business_type: Mapped[str] = mapped_column(String(80), default="kirana store")
     city: Mapped[str] = mapped_column(String(80), default="Bengaluru")
     consented_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    preferred_language: Mapped[str] = mapped_column(String(5), default="en", nullable=False)
+    scenario: Mapped[str] = mapped_column(String(60), default="stable", nullable=False)
 
     records: Mapped[list["Transaction"]] = relationship(
         back_populates="merchant", cascade="all, delete-orphan"
@@ -103,6 +105,9 @@ class Payment(Base):
     balance_after: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     carried_shortfall_after: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="paid", nullable=False)
+    days_late: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     loan: Mapped[Loan] = relationship(back_populates="payments")
 
@@ -120,3 +125,82 @@ class AuditRecord(Base):
     rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     anchored_tx_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class Lender(Base):
+    __tablename__ = "lenders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    phone: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    portfolio: Mapped[list["LenderPortfolio"]] = relationship(
+        back_populates="lender", cascade="all, delete-orphan"
+    )
+
+
+class LenderPortfolio(Base):
+    __tablename__ = "lender_portfolio"
+    __table_args__ = (UniqueConstraint("lender_id", "merchant_id", name="uq_lender_merchant"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lender_id: Mapped[int] = mapped_column(ForeignKey("lenders.id"), nullable=False, index=True)
+    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchants.id"), nullable=False, index=True)
+
+    lender: Mapped[Lender] = relationship(back_populates="portfolio")
+    merchant: Mapped[Merchant] = relationship()
+
+
+class Consent(Base):
+    __tablename__ = "consents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchants.id"), nullable=False, index=True)
+    scope: Mapped[str] = mapped_column(String(80), default="transaction history", nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+
+    merchant: Mapped[Merchant] = relationship()
+
+
+class Alert(Base):
+    __tablename__ = "alerts"
+    __table_args__ = (
+        UniqueConstraint("merchant_id", "signal_id", "week_key", name="uq_alert_signal_week"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchants.id"), nullable=False, index=True)
+    signal_id: Mapped[str] = mapped_column(String(10), nullable=False)
+    severity: Mapped[str] = mapped_column(String(10), nullable=False)
+    week_key: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="new", nullable=False)
+    message_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    params_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
+
+    merchant: Mapped[Merchant] = relationship()
+
+
+class LenderAction(Base):
+    __tablename__ = "lender_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lender_id: Mapped[int] = mapped_column(ForeignKey("lenders.id"), nullable=False, index=True)
+    merchant_id: Mapped[int] = mapped_column(ForeignKey("merchants.id"), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    alert_id: Mapped[int | None] = mapped_column(ForeignKey("alerts.id"), nullable=True)
+    language: Mapped[str] = mapped_column(String(5), default="en", nullable=False)
+    message_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    message_params_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
+    message_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    lender: Mapped[Lender] = relationship()
+    merchant: Mapped[Merchant] = relationship()
+    alert: Mapped[Alert | None] = relationship()

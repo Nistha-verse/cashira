@@ -6,7 +6,11 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_api_smoke_for_core_endpoints():
+def test_api_smoke_for_core_endpoints(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "payments_enabled", True)
+    verified = client.post("/auth/verify-otp", json={"phone": "+919900000001", "code": settings.demo_otp_code})
+    client.headers["Authorization"] = f"Bearer {verified.json()['session_token']}"
     paths = ["/health", "/merchant/me", "/merchant/transactions", "/merchant/summary", "/merchant/forecast", "/loan"]
     for path in paths:
         result = client.get(path)
