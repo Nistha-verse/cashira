@@ -19,7 +19,7 @@ from ..services.audit import create_audit_record
 from ..services.anchor import anchor_audit_record
 from ..authz import require_merchant
 from ..config import settings
-from .helpers import assumptions, decimal, iso_datetime, response
+from .helpers import assumptions, decimal, iso_datetime, record_info, response
 from .merchant import DEMO_MERCHANT_ID
 
 router = APIRouter(prefix="/loan", tags=["loan"])
@@ -121,6 +121,7 @@ def loan_recommendation(identity: dict = Depends(require_merchant), db: Session 
             "forecast": {"expected_net": forecast["expected_net"], "lower_net": forecast["lower_net"], "upper_net": forecast["upper_net"]},
             "summary": {"trailing_average_net": summary["trailing_average_net"], "latest_month": summary["latest_month"]},
             **assumptions(),
+            **record_info(audit),
         }
     )
 
@@ -190,6 +191,7 @@ def loan_pay(payload: PaymentRequest, identity: dict = Depends(require_merchant)
                 "carried_forward_shortfall": decimal(payment.carried_shortfall_after),
             },
             "message": "Simulated monthly payment recorded.",
-            **assumptions(),
+             **assumptions(),
+             **record_info(audit),
         }
     )

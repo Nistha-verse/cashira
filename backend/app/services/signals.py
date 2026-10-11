@@ -6,7 +6,7 @@ from typing import Any
 
 from ..config import settings
 
-SIGNAL_RULE_VERSIONS = {f"S{i}": f"cashira-s{i}-v1" for i in range(1, 7)}
+SIGNAL_RULE_VERSIONS = {f"S{i}": f"cashira-s{i}-v1" for i in range(1, 8)}
 SEVERITY_RANK = {"green": 0, "amber": 1, "red": 2, "none": -1}
 
 
@@ -30,6 +30,7 @@ def render_signal_reason(signal: dict[str, Any], lang: str = "en") -> dict[str, 
         "ratio": round(float(params.get("ratio", 0)) * 100, 1),
         "coverage": round(float(params.get("coverage", 0)), 2),
         "days": params.get("days_since_last_transaction", 0),
+        "cv": round(float(params.get("coefficient_of_variation", 0)) * 100, 1),
     }
     return {**signal, "text": t(signal["reason_key"], lang, **rendered_params)}
 
@@ -98,10 +99,17 @@ def signal_s6(repayment: dict[str, Any] | None) -> dict[str, Any]:
     return _signal("S6", severity, "signals.s6", {"late_recent": late_recent, "overdue": overdue})
 
 
+def signal_s7(coefficient_of_variation: float = 0.0, thresholds: dict[str, Any] | None = None) -> dict[str, Any]:
+    thresholds = thresholds or settings.signal_thresholds
+    severity = "amber" if coefficient_of_variation > thresholds["volatility_cv_amber"] else "none"
+    return _signal("S7", severity, "signals.s7", {"coefficient_of_variation": round(coefficient_of_variation, 4)})
+
+
 def evaluate_signals(
     weekly: dict[str, Any],
     loan: dict[str, Any] | None,
     repayment: dict[str, Any] | None,
+    coefficient_of_variation: float = 0.0,
     thresholds: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     signals = [
@@ -111,6 +119,7 @@ def evaluate_signals(
         signal_s4(weekly, thresholds),
         signal_s5(weekly, thresholds),
         signal_s6(repayment),
+        signal_s7(coefficient_of_variation, thresholds),
     ]
     active = [item for item in signals if item["severity"] != "none"]
     status = max((item["severity"] for item in active), key=lambda severity: SEVERITY_RANK[severity], default="green")

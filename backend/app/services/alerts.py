@@ -9,14 +9,21 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from ..config import settings
 from ..models import Alert, Consent, Loan, Merchant, Payment, Transaction
 from .signals import evaluate_signals
 from .weekly import weekly_cash_flow
+from .coverage import daily_sales_cv, data_coverage
 
 
 def effective_as_of(db: Session, as_of: date | None = None) -> date:
     if as_of:
         return as_of
+    if settings.demo_as_of:
+        try:
+            return date.fromisoformat(settings.demo_as_of)
+        except ValueError:
+            pass
     latest = db.query(Transaction.transaction_date).order_by(Transaction.transaction_date.desc()).first()
     return latest[0] if latest else date.today()
 
@@ -54,8 +61,10 @@ def merchant_signal_evaluation(db: Session, merchant: Merchant, as_of: date | No
     loan = db.query(Loan).filter(Loan.merchant_id == merchant.id).first()
     loan_dict = {"standard_emi": float(loan.standard_emi)} if loan else None
     repayment = repayment_summary(summary_rows, effective)
-    signals = evaluate_signals(weekly, loan_dict, repayment)
-    return {"as_of": effective, "weekly": weekly, "signals": signals, "repayment": repayment, "loan": loan}
+    coverage = data_coverage(rows, effective)
+    volatility = daily_sales_cv(rows, effective)
+    signals = evaluate_signals(weekly, loan_dict, repayment, volatility)
+    return {"as_of": effective, "weekly": weekly, "signals": signals, "repayment": repayment, "loan": loan, "data_coverage": coverage, "daily_sales_cv": volatility}
 
 
 def evaluate_merchant_alerts(db: Session, merchant: Merchant, as_of: date | None = None) -> dict[str, Any]:

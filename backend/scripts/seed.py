@@ -21,6 +21,7 @@ if __package__ in {None, ""}:
 from sqlalchemy import delete
 
 from app.db import SessionLocal, init_db
+from app.config import BASE_DIR, settings
 from app.models import (
     Alert,
     AuditRecord,
@@ -38,13 +39,15 @@ from app.services.loan_state import apply_payment, calculate_standard_emi
 from app.services.summary import monthly_summary
 from app.services.validation import validate_rows
 from app.services.weekly import weekly_cash_flow
+from app.services.alerts import merchant_signal_evaluation, effective_as_of
+from app.services.priority import days_until_due, priority_for
 
 
 MERCHANTS = [
     {"id": 1, "name": "Riya's Corner Store", "phone": "+919900000001", "city": "Bengaluru", "scale": 1.00, "rent": 9000.0, "preferred_language": "hi", "scenario": "weak September"},
     {"id": 2, "name": "Asha Daily Needs", "phone": "+919900000002", "city": "Pune", "scale": 0.93, "rent": 8500.0, "preferred_language": "en", "scenario": "stable"},
     {"id": 3, "name": "Kabir General Mart", "phone": "+919900000003", "city": "Jaipur", "scale": 1.07, "rent": 9500.0, "preferred_language": "hi", "scenario": "stable"},
-    {"id": 4, "name": "Mitali Kirana", "phone": "+919900000004", "city": "Kolkata", "scale": 0.96, "rent": 8800.0, "preferred_language": "bn", "scenario": "stable"},
+    {"id": 4, "name": "Mitali Kirana", "phone": "+919900000004", "city": "Kolkata", "scale": 0.96, "rent": 8800.0, "preferred_language": "bn", "scenario": "volatile sales"},
     {"id": 5, "name": "Howrah Daily Store", "phone": "+919900000005", "city": "Howrah", "scale": 1.02, "rent": 9200.0, "preferred_language": "bn", "scenario": "stable"},
     {"id": 6, "name": "Siliguri Bazaar", "phone": "+919900000006", "city": "Siliguri", "scale": 0.90, "rent": 8200.0, "preferred_language": "bn", "scenario": "stable"},
     {"id": 7, "name": "Durgapur Needs", "phone": "+919900000007", "city": "Durgapur", "scale": 1.05, "rent": 9400.0, "preferred_language": "bn", "scenario": "growing"},
@@ -99,6 +102,8 @@ def _scenario_factor(merchant: dict, current: date) -> float:
             return 0.72
         if days_from_end < 28:
             return 0.72 + (28 - days_from_end) / 28 * 0.28
+    if merchant["scenario"] == "volatile sales":
+        return 0.58 if current.toordinal() % 14 < 7 else 1.34
     return 1.0
 
 
@@ -220,6 +225,14 @@ def generate_synthetic_rows(seed: int = 42) -> list[dict]:
 
 
 def seed_database(seed: int = 42) -> dict[str, int]:
+    database_url = settings.database_url
+    expected = (BASE_DIR / "data" / "cashira.db").resolve()
+    test_database = (BASE_DIR / "data" / "test_cashira.db").resolve()
+    if not database_url.startswith("sqlite:///"):
+        raise RuntimeError("Refusing to seed a non-demo database path")
+    database_path = Path(database_url.removeprefix("sqlite:///")).resolve()
+    if database_path not in {expected, test_database}:
+        raise RuntimeError("Refusing to seed a non-demo database path")
     init_db()
     rows = generate_synthetic_rows(seed)
     db = SessionLocal()
@@ -285,7 +298,7 @@ def seed_database(seed: int = 42) -> dict[str, int]:
                     min_emi=standard * Decimal("0.70"),
                     max_emi=standard * Decimal("1.20"),
                     standard_emi=standard,
-                    due_day=5,
+                    due_day=20 if merchant["id"] == 4 else 5,
                     current_balance=principal,
                     carried_shortfall=Decimal("0.00"),
                 )
@@ -373,16 +386,19 @@ def main() -> None:
     db = SessionLocal()
     try:
         print("\nMerchant scenario summary")
-        print(f"{'Merchant':<24} {'Scenario':<24} {'Last 6 weekly sales':<70} {'Consent':<10} {'Payments'}")
+        print(f"{'Merchant':<24} {'Scenario':<24} {'Priority':<18} {'Signals':<18} {'Due':<8} {'Coverage':<12}")
         print("-" * 150)
         for merchant in MERCHANTS:
             records = db.query(Transaction).filter(Transaction.merchant_id == merchant["id"]).all()
-            weekly = weekly_cash_flow(records, as_of=DATA_END)
-            last_sales = ", ".join(f"{week['sales']:,.0f}" for week in weekly["weeks"][-6:])
+            effective = effective_as_of(db)
+            evaluation = merchant_signal_evaluation(db, db.get(Merchant, merchant["id"]), effective)
+            loan = db.query(Loan).filter(Loan.merchant_id == merchant["id"]).first()
             consent = db.query(Consent).filter(Consent.merchant_id == merchant["id"]).first()
-            statuses = [payment.status for payment in db.query(Payment).join(Loan).filter(Loan.merchant_id == merchant["id"]).all()]
-            payment_status = "overdue" if "overdue" in statuses else "late" if "late" in statuses else "on time"
-            print(f"{merchant['name']:<24} {merchant['scenario']:<24} {last_sales:<70} {consent.status:<10} {payment_status}")
+            active_signals = ",".join(item["id"] for item in evaluation["signals"]["signals"] if item["severity"] != "none") or "none"
+            due = days_until_due(loan, effective)
+            priority = "consent withdrawn" if consent and consent.status != "active" else priority_for(evaluation["signals"]["status"], due)
+            coverage = evaluation["data_coverage"]
+            print(f"{merchant['name']:<24} {merchant['scenario']:<24} {priority:<18} {active_signals:<18} {str(due):<8} {coverage['covered_days']}/{coverage['window_days']}")
     finally:
         db.close()
 

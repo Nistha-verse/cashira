@@ -10,7 +10,7 @@ from ..db import get_db
 from ..models import AuditRecord
 from ..schemas import VerifyRequest
 from ..services.audit import verify_audit_record
-from .helpers import iso_datetime, response
+from .helpers import iso_datetime, record_info, response
 
 router = APIRouter(prefix="/records", tags=["records"])
 
@@ -26,6 +26,7 @@ def receipt_payload(audit: AuditRecord) -> dict:
         "rule_version": audit.rule_version,
         "created_at": iso_datetime(audit.created_at),
         "anchored_tx_hash": audit.anchored_tx_hash,
+        **record_info(audit),
     }
 
 
@@ -75,4 +76,4 @@ def verify_record(payload: VerifyRequest, db: Session = Depends(get_db)) -> dict
         )
     if audit is None:
         raise HTTPException(status_code=404, detail="Record not found; provide record_id or a complete receipt")
-    return response(verify_audit_record(db, audit))
+    return response({**verify_audit_record(db, audit), **record_info(audit)})

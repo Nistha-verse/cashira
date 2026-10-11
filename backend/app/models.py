@@ -182,6 +182,7 @@ class Alert(Base):
     params_json: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     rule_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    action_id: Mapped[int | None] = mapped_column(ForeignKey("lender_actions.id"), nullable=True)
 
     merchant: Mapped[Merchant] = relationship()
 
@@ -203,4 +204,4 @@ class LenderAction(Base):
 
     lender: Mapped[Lender] = relationship()
     merchant: Mapped[Merchant] = relationship()
-    alert: Mapped[Alert | None] = relationship()
+    alert: Mapped[Alert | None] = relationship(foreign_keys=[alert_id])

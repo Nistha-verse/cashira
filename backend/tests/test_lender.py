@@ -27,7 +27,11 @@ def test_seeded_scenarios_and_consent_filtering():
     body = portfolio.json()
     assert len(body["merchants"]) == 12
     revoked = next(item for item in body["merchants"] if item["id"] == 12)
-    assert revoked == {"id": 12, "name": "Noida Daily Mart", "city": "Noida", "status": "consent withdrawn", "consent_status": "revoked"}
+    assert revoked["id"] == 12
+    assert revoked["priority"] == "consent withdrawn"
+    assert revoked["days_until_due"] is None
+    assert revoked["status"] == "consent withdrawn"
+    assert revoked["consent_status"] == "revoked"
     detail = client.get("/lender/merchants/12", headers=headers)
     assert detail.status_code == 200
     assert "weekly" not in detail.json()

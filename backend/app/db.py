@@ -34,6 +34,9 @@ def _add_compatibility_columns() -> None:
             "status": "VARCHAR(20) NOT NULL DEFAULT 'paid'",
             "days_late": "INTEGER NOT NULL DEFAULT 0",
         },
+        "alerts": {
+            "action_id": "INTEGER",
+        },
     }
     existing = inspect(engine)
     with engine.begin() as connection:
