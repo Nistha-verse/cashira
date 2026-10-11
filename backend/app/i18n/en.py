@@ -1,6 +1,7 @@
 CATALOG = {
     "prototype.notice": "Prototype only: all data is synthetic and simulated.",
     "consent.transaction_history": "I agree to share my transaction history for cash-flow review.",
+    "consent.revoked": "Consent withdrawn. New lender review is stopped.",
     "signals.s1": "Sales have fallen for {weeks} weeks, down {drop}% overall.",
     "signals.s2": "Recent sales are {ratio}% of the usual eight-week level.",
     "signals.s3": "Recent monthly cash flow covers {coverage} times the standard EMI.",

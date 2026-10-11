@@ -181,3 +181,18 @@ merchant’s language or the explicit language override.
 ```json
 {"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is a cash-flow intelligence dashboard for lender review, not a lender or decision-maker.","messages":[{"id":1,"message_key":"reminders.payment","params":{"name":"Mitali Kirana","amount":8986.34},"text":"নমস্কার Mitali Kirana। দয়া করে ₹8,986.34 টাকার পরের EMI দেখুন। এটি একটি সিমুলেটেড রিমাইন্ডার।","language":"bn"}]}
 ```
+
+## `POST /demo/simulate-week`
+
+Demo-only control. Enable `DEMO_MODE=true`, use `X-Demo-Token: demo`, or use a
+lender session. Request: `{"merchant_id":8,"pattern":"decline"}`.
+
+```json
+{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is a cash-flow intelligence dashboard for lender review, not a lender or decision-maker.","demo_only":true,"merchant_id":8,"pattern":"decline","transactions_added":14,"status":"red","audit_record_id":12}
+```
+
+## `POST /demo/reset`
+
+```json
+{"prototype":true,"notice":"Prototype only: all data is synthetic and simulated; Cashira is a cash-flow intelligence dashboard for lender review, not a lender or decision-maker.","demo_only":true,"reset":true,"seed":{"merchants":12,"valid_rows":18080,"rejected_rows":4,"lender_id":1}}
+```

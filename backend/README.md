@@ -135,3 +135,18 @@ throwaway testnet key, deploy with `npm run deploy:amoy`, then set the matching
 backend `CHAIN_*` variables and `CHAIN_ENABLED=true`. Anchor calls are
 best-effort: if disabled or unavailable, recommendations, payments, receipts,
 and verification continue to work without an anchor.
+
+## Demo controls
+
+The final demo-only controls are clearly labeled and disabled unless
+`DEMO_MODE=true`, an `X-Demo-Token: demo` header is supplied, or a lender
+session is used:
+
+```bash
+POST /demo/simulate-week  {"merchant_id":8,"pattern":"decline"}
+POST /demo/reset
+```
+
+`pattern` is `decline`, `stable`, or `recover`. The simulation appends one
+synthetic week, evaluates the merchant again, and records a signed demo audit
+event. Reset runs the deterministic seed again.

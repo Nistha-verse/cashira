@@ -35,6 +35,11 @@ class LenderActionRequest(BaseModel):
     lang: str | None = None
 
 
+class SimulateWeekRequest(BaseModel):
+    merchant_id: int
+    pattern: str
+
+
 class PaymentRequest(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0)
     payment_date: date | None = None

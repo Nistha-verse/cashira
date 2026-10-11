@@ -75,7 +75,7 @@ def merchant_review(db: Session, merchant: Merchant, as_of: date | None = None, 
         "monthly_summary": monthly_summary(records),
         "signals": signal_payload,
         "forecast": {"label": "estimate, not a guarantee", **forecast.as_dict()},
-        "repayment": {"history": [{"due_date": item.due_date.isoformat() if item.due_date else None, "payment_date": item.payment_date.isoformat() if item.payment_date else None, "amount": decimal(item.amount), "status": item.status, "days_late": item.days_late, "balance_after": decimal(item.balance_after)} for item in payments], **evaluation["repayment"]},
+        "repayment": {"history": [{"due_date": item.due_date.isoformat() if item.due_date else None, "payment_date": item.payment_date.isoformat() if item.payment_date else None, "amount": decimal(item.amount), "status": item.status, "status_key": f"repayment.{item.status}", "status_text": t(f"repayment.{item.status}", selected_lang), "days_late": item.days_late, "balance_after": decimal(item.balance_after)} for item in payments], **evaluation["repayment"]},
         "emi_suggestion": {"label": "suggestion for lender review; Cashira does not change any EMI", "loan": loan_payload(loan) if loan else None, "explanation": explain_recommendation_translated([], selected_lang)},
         "alerts": [{"id": item.id, "signal_id": item.signal_id, "severity": item.severity, "status": item.status, "week_key": item.week_key, "message_key": item.message_key, "params": json.loads(item.params_json), "text": t(item.message_key, selected_lang, **json.loads(item.params_json))} for item in db.query(Alert).filter(Alert.merchant_id == merchant.id).order_by(Alert.id).all()],
     }

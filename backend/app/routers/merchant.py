@@ -141,7 +141,7 @@ def revoke_consent(identity: dict = Depends(require_merchant), db: Session = Dep
             rule_version="cashira-consent-v1",
         )
     db.commit()
-    return response({"consent": {"status": consent.status, "scope": consent.scope}, "message_key": "consent.revoked", "params": {}, "message": "Consent withdrawn. New lender review is stopped."})
+    return response({"consent": {"status": consent.status, "scope": consent.scope}, "message_key": "consent.revoked", "params": {}, "message": t("consent.revoked", merchant.preferred_language)})
 
 
 @router.get("/messages")
