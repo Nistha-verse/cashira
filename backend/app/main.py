@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from .db import init_db
-from .routers import auth, health, loan, merchant, records
+from .routers import auth, health, lender, loan, merchant, records
 
 app = FastAPI(
     title="Cashira API",
@@ -41,4 +41,5 @@ app.include_router(auth.router)
 app.include_router(merchant.router)
 app.include_router(loan.router)
 app.include_router(records.router)
+app.include_router(lender.router)
 app.include_router(health.router)
